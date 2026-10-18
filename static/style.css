@@ -198,6 +198,8 @@ aside,section{min-height:0;overflow:auto}
 .treffer.ja{color:var(--gut)}
 .pvorschau{white-space:pre-wrap;font-family:var(--mono);font-size:11.5px;background:var(--bg);
            border:1px solid var(--line);border-radius:5px;padding:10px;margin:0;max-height:320px;overflow:auto}
+.srv{display:flex;gap:8px;align-items:center;margin-bottom:4px}
+.srv .s-url{flex:1;font-family:var(--mono)}
 .pfehler{color:var(--schlecht);font-size:12px;min-height:16px}
 #p-info{flex:1;color:var(--dim2);font-size:11.5px}
 

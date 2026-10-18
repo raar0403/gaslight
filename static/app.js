@@ -432,6 +432,34 @@ function fallKarte(f) {
   return d;
 }
 
+function serverZeile(sv) {
+  const d = el("div", "srv");
+  const an = el("input", "s-an"); an.type = "checkbox"; an.checked = sv.an !== false; an.title = "eingeschaltet";
+  const name = el("input", "s-name"); name.value = sv.name || ""; name.placeholder = "Name"; name.size = 12;
+  const typ = el("select", "s-typ");
+  typ.appendChild(new Option("Ollama", "ollama"));
+  typ.appendChild(new Option("OpenAI-kompatibel (LM Studio …)", "openai"));
+  typ.value = sv.typ || "openai";
+  const url = el("input", "s-url"); url.value = sv.url || ""; url.placeholder = "http://127.0.0.1:1234";
+  const weg = el("button", null, "entfernen"); weg.onclick = () => d.remove();
+  d.append(an, name, typ, url, weg);
+  return d;
+}
+
+function serverSammeln() {
+  const out = [];
+  for (const d of document.querySelectorAll("#p-server .srv")) {
+    const name = d.querySelector(".s-name").value.trim();
+    const url = d.querySelector(".s-url").value.trim();
+    if (!name && !url) continue;
+    if (!name) throw new Error("Ein Server hat keinen Namen.");
+    if (!/^https?:\/\//.test(url)) throw new Error("Adresse von „" + name + "“ muss mit http:// anfangen.");
+    if (out.some((s) => s.name === name)) throw new Error("Servername doppelt: " + name);
+    out.push({ name, typ: d.querySelector(".s-typ").value, url, an: d.querySelector(".s-an").checked });
+  }
+  return out;
+}
+
 function faelleAusConfig(cfg) {
   const mods = cfg.modules || {};
   const out = [];
@@ -475,6 +503,7 @@ function promptsSammeln() {
     base_system: $("#p-base").value,
     modules,
     triggers,
+    server: serverSammeln(),
     num_ctx: parseInt($("#p-numctx").value) || 16384,
     think: $("#p-think").checked,
     keep_alive: $("#p-keep").value.trim() || "30m",
@@ -509,6 +538,8 @@ async function promptsOeffnen() {
   $("#p-think").checked = PROMPTS.think !== false;
   $("#p-keep").value = PROMPTS.keep_alive || "30m";
   $("#p-base").value = PROMPTS.base_system || "";
+  $("#p-server").innerHTML = "";
+  (PROMPTS.server || []).forEach((sv) => $("#p-server").appendChild(serverZeile(sv)));
   const box = $("#p-faelle");
   box.innerHTML = "";
   faelleAusConfig(PROMPTS).forEach((f) => box.appendChild(fallKarte(f)));
@@ -523,6 +554,7 @@ $("#p-neu").onclick = () => {
   $("#p-faelle").appendChild(k);
   k.querySelector(".f-id").focus();
 };
+$("#p-server-neu").onclick = () => $("#p-server").appendChild(serverZeile({ typ: "openai", an: true }));
 $("#p-vorschau").onclick = () => trefferZeigen(true);
 $("#pmodalzu").onclick = $("#pmodalabbruch").onclick = () => { $("#pmodal").hidden = true; };
 $("#pmodalok").onclick = async () => {
@@ -532,6 +564,7 @@ $("#pmodalok").onclick = async () => {
     await api("/api/prompts", { data });
     $("#pmodal").hidden = true;
     meldung("Agent-Einstellungen gespeichert.");
+    modelleLaden();   // Server koennen sich geaendert haben
     if (ZUSTAND.stats) aktualisieren();   // Marker in der Liste neu zeigen
   } catch (e) { $("#p-fehler").textContent = e.message; }
 };
@@ -549,7 +582,7 @@ async function modelleLaden() {
   const s = $("#model");
   s.innerHTML = "";
   if (!models.length) {
-    s.appendChild(new Option("Ollama nicht erreichbar", ""));
+    s.appendChild(new Option("kein Modell-Server erreichbar", ""));
     $("#run").disabled = true;
   } else {
     models.forEach((m) => s.appendChild(new Option(m, m)));
@@ -560,7 +593,7 @@ $("#reload-models").onclick = modelleLaden;
 $("#run").onclick = async () => {
   const model = $("#model").value;
   const auftrag = $("#auftrag").value.trim();
-  if (!model) { meldung("Kein Modell – laeuft Ollama?", true); return; }
+  if (!model) { meldung("Kein Modell – laeuft Ollama oder LM Studio? Adressen stehen in den Agent-Einstellungen.", true); return; }
   if (!auftrag) { meldung("Was soll der Agent tun?", true); return; }
   $("#run").disabled = true;
   $("#agentstatus").innerHTML = "";

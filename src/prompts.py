@@ -109,6 +109,12 @@ DEFAULTS = {
     # Denken bleibt an -- Qualitaet vor Tempo. Kostet Zeit (hunderte Denk-Tokens
     # pro Antwort), ist aber gewollt. Im UI abstellbar, wenn es mal schnell muss.
     "think": True,
+    # Modell-Server. typ "ollama" oder "openai" (OpenAI-kompatibel, z.B. LM
+    # Studio). Gefragt werden alle eingeschalteten; nicht erreichbare fallen still raus.
+    "server": [
+        {"name": "Ollama", "typ": "ollama", "url": "http://127.0.0.1:11434", "an": True},
+        {"name": "LM Studio", "typ": "openai", "url": "http://100.81.63.78:1234", "an": True},
+    ],
     # Modell geladen halten, damit kein langsamer Reload zwischen Anfragen kommt.
     "keep_alive": "30m",
 }

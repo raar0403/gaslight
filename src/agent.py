@@ -1,4 +1,4 @@
-"""Lokaler Agent ueber Ollama.
+"""Lokaler Agent ueber einen lokalen Modell-Server (llm.py).
 
 Der Agent bekommt die Historie nie am Stueck -- dafuer ist sie zu gross und
 ein lokales Modell zu klein. Er arbeitet ueber Werkzeuge: auflisten, greppen,
@@ -8,11 +8,9 @@ Vorschlaege erzeugen; das Anwenden macht ops.py, nachdem du zugestimmt hast.
 import json
 import re
 
-import requests
-
+import llm
 import prompts
 
-OLLAMA = "http://127.0.0.1:11434"
 
 def tool_defs():
     def fn(name, desc, props, req):
@@ -162,15 +160,7 @@ class Runner:
 
     # --------------------------------------------------------------- lauf
     def _call(self, messages):
-        cfg = prompts.load()
-        r = requests.post(OLLAMA + "/api/chat", timeout=600, json={
-            "model": self.model, "messages": messages,
-            "tools": tool_defs(), "stream": False,
-            "think": bool(cfg.get("think", False)),
-            "keep_alive": cfg.get("keep_alive", "30m"),
-            "options": {"num_ctx": int(cfg.get("num_ctx", 16384))}})
-        r.raise_for_status()
-        return r.json()["message"]
+        return llm.chat(self.model, messages, tools=tool_defs())
 
     def run(self, auftrag, max_runden=24):
         cfg = prompts.load()
@@ -217,17 +207,10 @@ class Runner:
                         res = "falsche Argumente: %s" % e
                     except Exception as e:
                         res = "Fehler: %s" % e
-                msgs.append({"role": "tool", "content": str(res)})
+                # tool_call_id braucht die OpenAI-API, Ollama ignoriert es
+                msgs.append({"role": "tool", "content": str(res),
+                             "tool_call_id": c.get("id")})
             if self.done:
                 break
         return {"ok": True, "zusammenfassung": self.summary,
                 "vorschlaege": len(self.store.open_items()), "runden": runde + 1}
-
-
-def models():
-    try:
-        r = requests.get(OLLAMA + "/api/tags", timeout=4)
-        r.raise_for_status()
-        return [m["name"] for m in r.json().get("models", [])]
-    except Exception:
-        return []

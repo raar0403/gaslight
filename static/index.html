@@ -83,7 +83,11 @@
         plus die Anweisung jedes <b>Sonderfalls</b>, der im geöffneten Verlauf vorkommt.
         Sonderfälle, die nicht vorkommen, kosten keinen Platz.</p>
 
-      <h3>Modell</h3>
+      <h3>Modell-Server <span class="pdim">gefragt werden alle eingeschalteten; wer nicht antwortet, fällt still aus der Modellauswahl</span></h3>
+      <div id="p-server"></div>
+      <button id="p-server-neu">+ Server</button>
+
+      <h3>Modell <span class="pdim">nur Ollama — bei LM Studio stellst du das dort beim Laden des Modells ein</span></h3>
       <div class="preihe">
         <label>Kontextlänge <input id="p-numctx" type="number" min="2048" step="1024"></label>
         <label class="haken"><input id="p-think" type="checkbox"> Denken (gründlicher, deutlich langsamer)</label>

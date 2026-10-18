@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-import agent, discovery, ops, prompts
+import agent, discovery, llm, ops, prompts
 from proposals import APPROVED, DECLINED, Store
 from session import Session
 
@@ -75,7 +75,7 @@ def r_tree():
 
 @app.get("/api/models")
 def r_models():
-    return {"models": agent.models()}
+    return {"models": llm.models()}
 
 
 @app.post("/api/open")
@@ -233,18 +233,11 @@ class ChatReq(BaseModel):
 def r_chat(q: ChatReq):
     """Reiner Chat mit dem lokalen Modell -- kein Systemprompt, keine Werkzeuge.
     Unabhaengig von einer offenen Session."""
-    import requests
-    cfg = prompts.load()
     try:
-        r = requests.post(agent.OLLAMA + "/api/chat", timeout=600, json={
-            "model": q.model, "messages": q.messages, "stream": False,
-            "think": bool(cfg.get("think", True)),
-            "keep_alive": cfg.get("keep_alive", "30m"),
-            "options": {"num_ctx": int(cfg.get("num_ctx", 16384))}})
-        r.raise_for_status()
+        m = llm.chat(q.model, q.messages)
     except Exception as e:
-        raise HTTPException(502, "Ollama-Fehler: %s" % e)
-    return {"reply": r.json().get("message", {}).get("content", "")}
+        raise HTTPException(502, "Modell-Server: %s" % e)
+    return {"reply": m.get("content") or ""}
 
 
 @app.get("/")
