@@ -13,7 +13,7 @@
   <div class="spacer"></div>
   <div id="pruefung" class="pruef"></div>
   <button id="chat-btn">Chat</button>
-  <button id="prompts-btn">Prompts / Trigger</button>
+  <button id="prompts-btn">Agent-Einstellungen</button>
   <button id="save" class="save" disabled>speichern</button>
 </header>
 
@@ -77,19 +77,33 @@
 
 <div id="pmodal" class="modal" hidden>
   <div class="box gross">
-    <div class="boxkopf"><span>Prompts &amp; Trigger für den lokalen Agenten</span><button id="pmodalzu">&times;</button></div>
+    <div class="boxkopf"><span>Agent-Einstellungen</span><button id="pmodalzu">&times;</button></div>
     <div class="pbody">
-      <label>Kontextlänge des lokalen Modells (num_ctx)</label>
-      <input id="p-numctx" type="number" min="2048" step="1024">
-      <label>Basis-Systemprompt</label>
+      <p class="perkl">Was der lokale Agent bei jedem Lauf zu lesen bekommt: die <b>Grundanweisung</b>,
+        plus die Anweisung jedes <b>Sonderfalls</b>, der im geöffneten Verlauf vorkommt.
+        Sonderfälle, die nicht vorkommen, kosten keinen Platz.</p>
+
+      <h3>Modell</h3>
+      <div class="preihe">
+        <label>Kontextlänge <input id="p-numctx" type="number" min="2048" step="1024"></label>
+        <label class="haken"><input id="p-think" type="checkbox"> Denken (gründlicher, deutlich langsamer)</label>
+        <label>geladen halten <input id="p-keep" type="text" size="5"></label>
+      </div>
+
+      <h3>Grundanweisung</h3>
       <textarea id="p-base" rows="8"></textarea>
-      <div id="p-module"></div>
-      <label>Trigger (JSON-Liste eigener Marker) — Felder: id, typ ("regex"|"record_subtype"), muster/wert, an</label>
-      <textarea id="p-triggers" rows="5" spellcheck="false"></textarea>
+
+      <h3>Sonderfälle <span class="pdim">Erkennung &rarr; Zusatzanweisung</span></h3>
+      <div id="p-faelle"></div>
+      <button id="p-neu">+ eigener Sonderfall</button>
+
+      <h3>Vorschau <span class="pdim">genau dieser Text geht an den Agenten (mit den Einstellungen oben, auch ungespeichert)</span></h3>
+      <button id="p-vorschau">Vorschau für offene Session</button>
+      <pre id="p-vorschautext" class="pvorschau" hidden></pre>
       <div id="p-fehler" class="pfehler"></div>
     </div>
     <div class="boxfuss">
-      <span id="p-info">Die Marker-Module werden nur geladen, wenn ihr Marker im Verlauf vorkommt.</span>
+      <span id="p-info"></span>
       <button id="pmodalabbruch">abbrechen</button>
       <button id="pmodalok" class="primaer">speichern</button>
     </div>

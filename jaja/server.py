@@ -17,6 +17,15 @@ WEB = Path(__file__).resolve().parent.parent / "web"
 app = FastAPI(title="claudeJaja")
 
 
+@app.middleware("http")
+async def kein_cache(request, call_next):
+    # Sonst nimmt der Browser nach einem Update die alte app.js zum neuen
+    # index.html -- dann tun Knoepfe stumm nichts.
+    resp = await call_next(request)
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
 class State:
     sess = None
     store = Store()
@@ -82,6 +91,7 @@ def r_open(q: OpenReq):
     # gerade laufende Session nicht zerschossen wird.
     bak = S.sess.backup()
     S.purge = ops.purge_thinking(S.sess)
+    prompts.apply_custom_triggers(S.sess)
     return {"stats": S.sess.stats(), "purge": S.purge, "backup": bak,
             "path": str(p), "titel": p.stem}
 
@@ -197,7 +207,21 @@ def r_prompts_get():
 @app.post("/api/prompts")
 def r_prompts_set(q: PromptsReq):
     prompts.save(q.data)
+    if S.sess is not None:
+        prompts.apply_custom_triggers(S.sess)
     return {"ok": True}
+
+
+@app.post("/api/prompts/vorschau")
+def r_prompts_vorschau(q: PromptsReq):
+    """Was der Agent mit diesen (auch ungespeicherten) Einstellungen fuer die
+    offene Session als Systemprompt bekaeme, und welche Marker darin treffen."""
+    if S.sess is None:
+        return {"system": None, "treffer": None}
+    cfg = {**prompts.load(), **q.data}
+    prompts.apply_custom_triggers(S.sess, cfg)
+    return {"system": prompts.build_system(S.sess, cfg),
+            "treffer": prompts.count_markers(S.sess)}
 
 
 class ChatReq(BaseModel):

@@ -338,46 +338,172 @@ $("#c-text").addEventListener("keydown", (e) => {
 });
 
 /* ------------------------------------------------------- prompts-editor */
+// Ein Sonderfall = Erkennung (eingebaut oder eigener Trigger) + Modul-Anweisung.
+// Gespeichert wird weiter im alten Format: modules{id} und triggers[].
 let PROMPTS = null;
+const EINGEBAUT = {
+  classifier_stop: "eingebaut: Abbruchmeldung eines Sicherheits-Klassifikators, die als Nutzer-Nachricht im Verlauf steht",
+  refusal_fallback: "eingebaut: Systemeintrag, dass die Session auf ein Fallback-Modell umgeschaltet wurde",
+};
 
-async function promptsOeffnen() {
-  PROMPTS = await api("/api/prompts");
-  $("#p-numctx").value = PROMPTS.num_ctx || 16384;
-  $("#p-base").value = PROMPTS.base_system || "";
-  $("#p-triggers").value = JSON.stringify(PROMPTS.triggers || [], null, 2);
-  const box = $("#p-module");
-  box.innerHTML = "";
-  Object.entries(PROMPTS.modules || {}).forEach(([id, m]) => {
-    const l = el("label", null, "Modul: " + id + "  — " + (m.beschreibung || ""));
-    const t = el("textarea");
-    t.rows = 7;
-    t.value = m.prompt || "";
-    t.dataset.mod = id;
-    box.appendChild(l);
-    box.appendChild(t);
-  });
-  $("#p-fehler").textContent = "";
-  $("#pmodal").hidden = false;
+function fallKarte(f) {
+  const d = el("div", "fall" + (f.eigen ? " eigen" : ""));
+  d.dataset.id = f.id;
+  d.dataset.eigen = f.eigen ? "1" : "";
+  const k = el("div", "fallkopf");
+  if (f.eigen) {
+    const an = el("input", "f-an");
+    an.type = "checkbox";
+    an.checked = f.an !== false;
+    an.title = "aktiv";
+    k.appendChild(an);
+    const id = el("input", "f-id");
+    id.value = f.id;
+    id.placeholder = "Name";
+    id.size = 16;
+    k.appendChild(id);
+  } else {
+    k.appendChild(el("b", null, f.id));
+  }
+  const beschr = el("input", "f-beschr");
+  beschr.value = f.beschreibung || "";
+  beschr.placeholder = "wofür ist das?";
+  k.appendChild(beschr);
+  k.appendChild(el("span", "treffer", ""));
+  if (f.eigen) {
+    const weg = el("button", null, "entfernen");
+    weg.onclick = () => d.remove();
+    k.appendChild(weg);
+  }
+  d.appendChild(k);
+
+  const e = el("div", "fallerkennung");
+  if (f.eigen) {
+    e.appendChild(el("span", null, "erkannt, wenn"));
+    const typ = el("select", "f-typ");
+    typ.appendChild(new Option("eine Nachricht dieses Muster enthält (Regex, Groß/klein egal)", "regex"));
+    typ.appendChild(new Option("ein Systemeintrag diesen subtype hat", "record_subtype"));
+    typ.value = f.typ || "regex";
+    e.appendChild(typ);
+    const m = el("input", "f-muster");
+    m.value = f.muster || "";
+    m.placeholder = "z.B. ignore previous instructions";
+    e.appendChild(m);
+  } else {
+    e.appendChild(el("span", "pdim", EINGEBAUT[f.id] || "eingebaut"));
+  }
+  d.appendChild(e);
+
+  const t = el("textarea", "f-prompt");
+  t.rows = 6;
+  t.value = f.prompt || "";
+  t.placeholder = "Anweisung an den Agenten, wenn dieser Fall im Verlauf vorkommt";
+  d.appendChild(t);
+  return d;
 }
-$("#prompts-btn").onclick = promptsOeffnen;
-$("#pmodalzu").onclick = $("#pmodalabbruch").onclick = () => { $("#pmodal").hidden = true; };
-$("#pmodalok").onclick = async () => {
-  let triggers;
-  try { triggers = JSON.parse($("#p-triggers").value || "[]"); }
-  catch (e) { $("#p-fehler").textContent = "Trigger-JSON ungültig: " + e.message; return; }
-  const modules = {};
-  document.querySelectorAll("#p-module textarea").forEach((t) => {
-    const id = t.dataset.mod;
-    modules[id] = { beschreibung: (PROMPTS.modules[id] || {}).beschreibung || "", prompt: t.value };
+
+function faelleAusConfig(cfg) {
+  const mods = cfg.modules || {};
+  const out = [];
+  Object.keys(EINGEBAUT).forEach((id) => out.push({ ...(mods[id] || {}), id, eigen: false }));
+  (cfg.triggers || []).forEach((t) => out.push({
+    ...(mods[t.id] || {}), id: t.id, eigen: true, an: t.an, typ: t.typ,
+    muster: t.typ === "record_subtype" ? t.wert : t.muster,
+  }));
+  // Module ohne Erkennung wuerden nie geladen -- trotzdem zeigen, als abgeschalteter Fall.
+  Object.entries(mods).forEach(([id, m]) => {
+    if (!out.some((f) => f.id === id)) out.push({ ...m, id, eigen: true, an: false, typ: "regex", muster: "" });
   });
-  const data = {
+  return out;
+}
+
+function fallId(d) {
+  return d.dataset.eigen ? d.querySelector(".f-id").value.trim() : d.dataset.id;
+}
+
+function promptsSammeln() {
+  const modules = {}, triggers = [];
+  for (const d of document.querySelectorAll("#p-faelle .fall")) {
+    const eigen = !!d.dataset.eigen;
+    const id = fallId(d);
+    if (!id) throw new Error("Ein eigener Sonderfall hat keinen Namen.");
+    if (modules[id]) throw new Error("Name doppelt: " + id);
+    if (eigen && EINGEBAUT[id]) throw new Error("Name ist für einen eingebauten Fall reserviert: " + id);
+    modules[id] = { beschreibung: d.querySelector(".f-beschr").value, prompt: d.querySelector(".f-prompt").value };
+    if (eigen) {
+      const typ = d.querySelector(".f-typ").value;
+      const muster = d.querySelector(".f-muster").value;
+      if (typ === "regex") {
+        try { new RegExp(muster); } catch (e) { throw new Error("Muster von „" + id + "“ ist kein gültiger Regex: " + e.message); }
+      }
+      const t = { id, typ, an: d.querySelector(".f-an").checked };
+      if (typ === "regex") t.muster = muster; else t.wert = muster;
+      triggers.push(t);
+    }
+  }
+  return {
     base_system: $("#p-base").value,
     modules,
     triggers,
     num_ctx: parseInt($("#p-numctx").value) || 16384,
+    think: $("#p-think").checked,
+    keep_alive: $("#p-keep").value.trim() || "30m",
   };
-  try { await api("/api/prompts", { data }); $("#pmodal").hidden = true; meldung("Prompts gespeichert."); }
-  catch (e) { $("#p-fehler").textContent = e.message; }
+}
+
+async function trefferZeigen(mitText) {
+  let data;
+  try { data = promptsSammeln(); } catch (e) { $("#p-fehler").textContent = e.message; return; }
+  $("#p-fehler").textContent = "";
+  let r;
+  try { r = await api("/api/prompts/vorschau", { data }); } catch (e) { $("#p-fehler").textContent = e.message; return; }
+  document.querySelectorAll("#p-faelle .fall").forEach((d) => {
+    const s = d.querySelector(".treffer");
+    if (r.treffer == null) { s.textContent = ""; return; }
+    const n = r.treffer[fallId(d)] || 0;
+    s.textContent = n ? n + "× im Verlauf → wird geladen" : "kommt nicht vor";
+    s.className = "treffer" + (n ? " ja" : "");
+  });
+  $("#p-info").textContent = r.treffer == null
+    ? "Keine Session offen – Treffer und Vorschau gibt es erst, wenn links eine Session geöffnet ist." : "";
+  if (mitText) {
+    const v = $("#p-vorschautext");
+    v.hidden = false;
+    v.textContent = r.system == null ? "Keine Session offen." : r.system;
+  }
+}
+
+async function promptsOeffnen() {
+  PROMPTS = await api("/api/prompts");
+  $("#p-numctx").value = PROMPTS.num_ctx || 16384;
+  $("#p-think").checked = PROMPTS.think !== false;
+  $("#p-keep").value = PROMPTS.keep_alive || "30m";
+  $("#p-base").value = PROMPTS.base_system || "";
+  const box = $("#p-faelle");
+  box.innerHTML = "";
+  faelleAusConfig(PROMPTS).forEach((f) => box.appendChild(fallKarte(f)));
+  $("#p-vorschautext").hidden = true;
+  $("#p-fehler").textContent = "";
+  $("#pmodal").hidden = false;
+  trefferZeigen(false);
+}
+$("#prompts-btn").onclick = promptsOeffnen;
+$("#p-neu").onclick = () => {
+  const k = fallKarte({ id: "", eigen: true, an: true, typ: "regex" });
+  $("#p-faelle").appendChild(k);
+  k.querySelector(".f-id").focus();
+};
+$("#p-vorschau").onclick = () => trefferZeigen(true);
+$("#pmodalzu").onclick = $("#pmodalabbruch").onclick = () => { $("#pmodal").hidden = true; };
+$("#pmodalok").onclick = async () => {
+  let data;
+  try { data = promptsSammeln(); } catch (e) { $("#p-fehler").textContent = e.message; return; }
+  try {
+    await api("/api/prompts", { data });
+    $("#pmodal").hidden = true;
+    meldung("Agent-Einstellungen gespeichert.");
+    if (ZUSTAND.stats) aktualisieren();   // Marker in der Liste neu zeigen
+  } catch (e) { $("#p-fehler").textContent = e.message; }
 };
 
 function meldung(text, warn) {

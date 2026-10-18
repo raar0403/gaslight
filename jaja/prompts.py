@@ -89,6 +89,10 @@ kostet -- er traegt inhaltlich nichts zum Gespraech bei.""",
 }
 
 
+# Diese Marker erkennt session.py selbst; im UI nicht abschaltbar.
+BUILTIN = ("classifier_stop", "refusal_fallback")
+
+
 # Custom-Trigger: der Nutzer definiert eigene Marker per Regel.
 #   typ "regex"          -> muster wird auf den Text jedes Items angewandt
 #   typ "record_subtype" -> record.subtype == wert
@@ -133,6 +137,11 @@ def apply_custom_triggers(sess, cfg=None):
     """Nutzerdefinierte Marker auf die Session anwenden (zusaetzlich zu den
     eingebauten). Setzt item.marker fuer Treffer."""
     cfg = cfg or load()
+    # Marker frueherer Trigger-Stände entfernen, sonst haengen geloeschte oder
+    # abgeschaltete Trigger weiter an den Nachrichten.
+    for it in sess.items:
+        if it.marker not in BUILTIN:
+            it.marker = None
     for t in cfg.get("triggers", []):
         if not t.get("an", True):
             continue
@@ -150,6 +159,15 @@ def apply_custom_triggers(sess, cfg=None):
             for it in sess.items:
                 if it.marker is None and sess.records[it.rec].get("subtype") == t.get("wert"):
                     it.marker = tid
+
+
+def count_markers(sess):
+    """Wie viele sichtbare Nachrichten je Marker -- fuer die Anzeige im UI."""
+    out = {}
+    for i in sess.items:
+        if i.marker and not i.deleted:
+            out[i.marker] = out.get(i.marker, 0) + 1
+    return out
 
 
 def active_markers(sess):
