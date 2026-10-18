@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>claudeJaja</title>
+<link rel="stylesheet" href="/web/style.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">claudeJaja</div>
+  <div id="kopf" class="kopf">keine Session offen</div>
+  <div class="spacer"></div>
+  <div id="pruefung" class="pruef"></div>
+  <button id="chat-btn">Chat</button>
+  <button id="prompts-btn">Prompts / Trigger</button>
+  <button id="save" class="save" disabled>speichern</button>
+</header>
+
+<main>
+  <aside id="links">
+    <div class="titel">Verzeichnisse</div>
+    <div id="baum" class="baum"></div>
+    <div class="titel">Sessions<span id="ordnername"></span></div>
+    <div id="sessions" class="sessions"><div class="leer">Ordner waehlen</div></div>
+  </aside>
+
+  <section id="mitte">
+    <div id="hinweis" class="hinweis" hidden></div>
+    <div id="liste" class="liste">
+      <div class="leer gross">Links eine Session waehlen.</div>
+    </div>
+  </section>
+
+  <aside id="rechts">
+    <div class="titel">Lokaler Agent</div>
+    <div class="feld">
+      <select id="model"></select>
+      <button id="reload-models" title="Modelle neu laden">&#8635;</button>
+    </div>
+    <textarea id="auftrag" rows="5" placeholder="z.B.: Nachricht 12 ist Hirnschiss, schreib sie so um, dass ... und loesche alles Irrelevante."></textarea>
+    <button id="run" class="run" disabled>Agent starten</button>
+    <div id="agentstatus" class="agentstatus"></div>
+    <div class="titel">Vorschlaege <span id="vzahl"></span></div>
+    <div id="vorschlaege" class="vorschlaege"><div class="leer">noch keine</div></div>
+    <div id="log" class="log"></div>
+  </aside>
+</main>
+
+<div id="modal" class="modal" hidden>
+  <div class="box">
+    <div class="boxkopf"><span id="modaltitel"></span><button id="modalzu">&times;</button></div>
+    <textarea id="modaltext" spellcheck="false"></textarea>
+    <div class="boxfuss">
+      <span id="modalinfo"></span>
+      <button id="modalabbruch">abbrechen</button>
+      <button id="modalok" class="primaer">uebernehmen</button>
+    </div>
+  </div>
+</div>
+
+<div id="cmodal" class="modal" hidden>
+  <div class="box gross chatbox">
+    <div class="boxkopf">
+      <span>Chat mit lokalem Modell</span>
+      <select id="c-model"></select>
+      <button id="c-clear" title="Verlauf leeren">leeren</button>
+      <button id="cmodalzu">&times;</button>
+    </div>
+    <div id="c-verlauf" class="cverlauf"><div class="leer">Kein Systemprompt, keine Werkzeuge — einfach reden.</div></div>
+    <div class="ceingabe">
+      <textarea id="c-text" rows="2" placeholder="Nachricht… (Enter sendet, Shift+Enter = Zeilenumbruch)"></textarea>
+      <button id="c-send" class="primaer">senden</button>
+    </div>
+  </div>
+</div>
+
+<div id="pmodal" class="modal" hidden>
+  <div class="box gross">
+    <div class="boxkopf"><span>Prompts &amp; Trigger für den lokalen Agenten</span><button id="pmodalzu">&times;</button></div>
+    <div class="pbody">
+      <label>Kontextlänge des lokalen Modells (num_ctx)</label>
+      <input id="p-numctx" type="number" min="2048" step="1024">
+      <label>Basis-Systemprompt</label>
+      <textarea id="p-base" rows="8"></textarea>
+      <div id="p-module"></div>
+      <label>Trigger (JSON-Liste eigener Marker) — Felder: id, typ ("regex"|"record_subtype"), muster/wert, an</label>
+      <textarea id="p-triggers" rows="5" spellcheck="false"></textarea>
+      <div id="p-fehler" class="pfehler"></div>
+    </div>
+    <div class="boxfuss">
+      <span id="p-info">Die Marker-Module werden nur geladen, wenn ihr Marker im Verlauf vorkommt.</span>
+      <button id="pmodalabbruch">abbrechen</button>
+      <button id="pmodalok" class="primaer">speichern</button>
+    </div>
+  </div>
+</div>
+
+<script src="/web/app.js"></script>
+</body>
+</html>
