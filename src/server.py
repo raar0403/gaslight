@@ -13,7 +13,7 @@ from . import agent, discovery, ops, prompts
 from .proposals import APPROVED, DECLINED, Store
 from .session import Session
 
-WEB = Path(__file__).resolve().parent.parent / "web"
+WEB = Path(__file__).resolve().parent.parent / "static"
 app = FastAPI(title="claudeJaja")
 
 
@@ -252,4 +252,4 @@ def r_index():
     return FileResponse(WEB / "index.html")
 
 
-app.mount("/web", StaticFiles(directory=str(WEB)), name="web")
+app.mount("/static", StaticFiles(directory=str(WEB)), name="static")

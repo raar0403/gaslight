@@ -8,7 +8,7 @@ Sichtbare Einheit fuer UI und Agent ist ein Item mit stabilem ganzzahligem idx.
 Ein Item ist meist ein content-Block (text / thinking / tool_use / tool_result),
 bei Nicht-Nachrichten-Records der Record selbst. UUIDs sieht niemand.
 
-Geschrieben wird ausschliesslich ueber jaja.ops.
+Geschrieben wird ausschliesslich ueber src.ops.
 """
 import json
 import shutil
@@ -136,7 +136,7 @@ class Session:
 
     def _detect_markers(self):
         """Eingebaute Marker erkennen. Custom-Trigger kommen zusaetzlich aus
-        der Config (jaja.prompts) und werden dort angehaengt."""
+        der Config (src.prompts) und werden dort angehaengt."""
         for it in self.items:
             it.uuid = self.records[it.rec].get("uuid")
         # 1) Classifier-Stop: als User getarnte Systemmeldung

@@ -1,7 +1,9 @@
 """Startet claudeJaja und oeffnet den Browser.
 
-    python start.py            (PowerShell, cmd, Git Bash)
-    python start.py --port 9000 --no-browser
+    python src/main.py            (PowerShell, cmd, Git Bash)
+    python src/main.py --port 9000 --no-browser
+
+Abhaengigkeiten: pip install -r config/requirements.txt
 """
 import argparse
 import sys
@@ -9,7 +11,8 @@ import threading
 import webbrowser
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+# Projektordner in den Pfad, damit src als Paket importierbar ist
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 def main():
@@ -20,7 +23,7 @@ def main():
     a = ap.parse_args()
 
     import uvicorn
-    from jaja.server import app
+    from src.server import app
 
     url = "http://%s:%d/" % (a.host, a.port)
     if not a.no_browser:
