@@ -9,9 +9,9 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import agent, discovery, ops, prompts
-from .proposals import APPROVED, DECLINED, Store
-from .session import Session
+import agent, discovery, ops, prompts
+from proposals import APPROVED, DECLINED, Store
+from session import Session
 
 WEB = Path(__file__).resolve().parent.parent / "static"
 app = FastAPI(title="claudeJaja")

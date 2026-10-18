@@ -11,8 +11,9 @@ import threading
 import webbrowser
 from pathlib import Path
 
-# Projektordner in den Pfad, damit src als Paket importierbar ist
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+# Eigener Ordner in den Pfad: die Module importieren sich flach (import prompts),
+# genau wie im distkit-Build, der alle Module flach nach app/ legt.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 
 def main():
@@ -23,7 +24,7 @@ def main():
     a = ap.parse_args()
 
     import uvicorn
-    from src.server import app
+    from server import app
 
     url = "http://%s:%d/" % (a.host, a.port)
     if not a.no_browser:

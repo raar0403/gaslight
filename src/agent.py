@@ -3,14 +3,14 @@
 Der Agent bekommt die Historie nie am Stueck -- dafuer ist sie zu gross und
 ein lokales Modell zu klein. Er arbeitet ueber Werkzeuge: auflisten, greppen,
 einzelne Nachrichten lesen. Schreiben kann er nicht. Er kann ausschliesslich
-Vorschlaege erzeugen; das Anwenden macht src.ops, nachdem du zugestimmt hast.
+Vorschlaege erzeugen; das Anwenden macht ops.py, nachdem du zugestimmt hast.
 """
 import json
 import re
 
 import requests
 
-from . import prompts
+import prompts
 
 OLLAMA = "http://127.0.0.1:11434"
 

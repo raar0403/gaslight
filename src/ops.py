@@ -80,7 +80,7 @@ def purge_thinking(sess):
 
 # ---------------------------------------------------------------- editieren
 def rewrite(sess, idx, new_text):
-    from . import tokens as _t
+    import tokens as _t
     it = sess.item(int(idx))
     if it is None:
         raise OpError("idx %s existiert nicht" % idx)
@@ -105,7 +105,7 @@ def rewrite(sess, idx, new_text):
 
 
 def revert(sess, idx):
-    from . import tokens as _t
+    import tokens as _t
     it = sess.item(int(idx))
     if it is None or it.original is None:
         return False
