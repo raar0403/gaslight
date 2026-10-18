@@ -19,11 +19,28 @@ async function api(pfad, body) {
 const ntok = (n) => n >= 1000 ? (n / 1000).toFixed(1).replace(".", ",") + "k" : String(n);
 
 /* ------------------------------------------------------------------ baum */
+// Der Baum ordnet nach Projektordner (cwd), nicht nach Speicherort. Wer nicht
+// weiss, wo er gearbeitet hat, soll trotzdem sofort seine Sessions sehen:
+// darum oben "Alle Sessions", und ein Ordner zeigt alles, was darunter liegt.
 async function baumLaden() {
   const wurzeln = await api("/api/tree");
   const ziel = $("#baum");
   ziel.innerHTML = "";
+  const alle = { name: "Alle Sessions", path: "", children: wurzeln, sessions: [],
+                 count: wurzeln.reduce((a, w) => a + w.count, 0) };
+  const z = el("div", "knoten alle aktiv");
+  z.appendChild(el("span", "pfeil", ""));
+  z.appendChild(el("span", null, alle.name));
+  z.appendChild(el("span", "zahl", String(alle.count)));
+  z.onclick = () => { aktivSetzen(z); sessionsZeigen(alle); };
+  ziel.appendChild(z);
   wurzeln.forEach((w) => ziel.appendChild(knoten(w, 0)));
+  sessionsZeigen(alle);
+}
+
+function aktivSetzen(z) {
+  document.querySelectorAll(".knoten.aktiv").forEach((x) => x.classList.remove("aktiv"));
+  z.classList.add("aktiv");
 }
 
 function knoten(n, tiefe) {
@@ -31,13 +48,14 @@ function knoten(n, tiefe) {
   const z = el("div", "knoten");
   z.style.paddingLeft = (6 + tiefe * 13) + "px";
   const hatKinder = n.children.length > 0;
-  const pfeil = el("span", "pfeil", hatKinder ? "▸" : "");
+  const pfeil = el("span", "pfeil", "");
   z.appendChild(pfeil);
   z.appendChild(el("span", null, n.name));
   z.appendChild(el("span", "zahl", String(n.count)));
   const kinder = el("div");
-  kinder.hidden = tiefe > 0;
-  if (tiefe === 0) pfeil.textContent = hatKinder ? "▾" : "";
+  // Ketten ohne Abzweig (C: > Users > name > ...) gleich aufklappen
+  kinder.hidden = !(tiefe === 0 || (n.children.length === 1 && !n.sessions.length));
+  if (hatKinder) pfeil.textContent = kinder.hidden ? "▸" : "▾";
   n.children.forEach((c) => kinder.appendChild(knoten(c, tiefe + 1)));
 
   z.onclick = () => {
@@ -45,8 +63,7 @@ function knoten(n, tiefe) {
       kinder.hidden = !kinder.hidden;
       pfeil.textContent = kinder.hidden ? "▸" : "▾";
     }
-    document.querySelectorAll(".knoten.aktiv").forEach((x) => x.classList.remove("aktiv"));
-    z.classList.add("aktiv");
+    aktivSetzen(z);
     sessionsZeigen(n);
   };
   wrap.appendChild(z);
@@ -54,16 +71,29 @@ function knoten(n, tiefe) {
   return wrap;
 }
 
+function sessionsDarunter(n) {
+  const out = n.sessions.slice();
+  n.children.forEach((c) => out.push(...sessionsDarunter(c)));
+  return out;
+}
+
 function sessionsZeigen(n) {
-  $("#ordnername").textContent = "  " + n.path;
+  $("#ordnername").textContent = n.path ? "  " + n.path : "";
   const ziel = $("#sessions");
   ziel.innerHTML = "";
-  if (!n.sessions.length) { ziel.appendChild(el("div", "leer", "keine Sessions in diesem Ordner")); return; }
-  n.sessions.forEach((s) => {
+  const liste = sessionsDarunter(n).sort((x, y) => y.mtime - x.mtime);
+  if (!liste.length) {
+    ziel.appendChild(el("div", "leer", n.path ? "keine Sessions in diesem Ordner"
+      : "Keine Claude-Code-Sessions gefunden (gesucht in %USERPROFILE%\\.claude\\projects)"));
+    return;
+  }
+  liste.forEach((s) => {
     const d = el("div", "sitem");
     d.appendChild(el("div", "t", s.title));
     const dt = new Date(s.mtime * 1000).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
     d.appendChild(el("div", "m", dt + "   " + (s.size / 1024).toFixed(0) + " KB"));
+    if (s.cwd !== n.path) d.appendChild(el("div", "m pfad", s.cwd));
+    d.title = s.cwd;
     d.onclick = () => {
       document.querySelectorAll(".sitem.aktiv").forEach((x) => x.classList.remove("aktiv"));
       d.classList.add("aktiv");
