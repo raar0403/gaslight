@@ -223,12 +223,19 @@ def validate(recs):
 
 
 def preview(sess):
+    if getattr(sess, "source", "claude") == "opencode":
+        # opencode: Reihenfolge ueber seq, Tool-Paar ist ein Block -- es gibt
+        # keine Ketten- oder Paarungsinvariante, die kaputtgehen koennte.
+        return sess.records, []
     recs, drop = _apply_to_records(sess)
     recs = _relink(recs, drop)
     return recs, validate(recs)
 
 
 def save(sess):
+    if getattr(sess, "source", "claude") == "opencode":
+        import opencode
+        return opencode.save(sess)
     recs, problems = preview(sess)
     if problems:
         raise OpError("Nicht gespeichert, Struktur waere kaputt:\n  - " +

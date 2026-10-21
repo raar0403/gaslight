@@ -4,6 +4,7 @@ const $ = (s) => document.querySelector(s);
 const el = (t, c, txt) => { const e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; };
 
 let ZUSTAND = { items: [], stats: null, proposals: [], offen: null, poller: null };
+let SRC = "claude";   // aktive Quelle: claude | opencode
 
 async function api(pfad, body) {
   const opt = body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {};
@@ -22,8 +23,18 @@ const ntok = (n) => n >= 1000 ? (n / 1000).toFixed(1).replace(".", ",") + "k" : 
 // Der Baum ordnet nach Projektordner (cwd), nicht nach Speicherort. Wer nicht
 // weiss, wo er gearbeitet hat, soll trotzdem sofort seine Sessions sehen:
 // darum oben "Alle Sessions", und ein Ordner zeigt alles, was darunter liegt.
+async function quelleWaehlen(src) {
+  if (src === SRC) return;
+  SRC = src;
+  $("#q-claude").classList.toggle("aktiv", src === "claude");
+  $("#q-opencode").classList.toggle("aktiv", src === "opencode");
+  await baumLaden();
+}
+$("#q-claude").onclick = () => quelleWaehlen("claude");
+$("#q-opencode").onclick = () => quelleWaehlen("opencode");
+
 async function baumLaden() {
-  const wurzeln = await api("/api/tree");
+  const wurzeln = await api("/api/tree?source=" + SRC);
   const ziel = $("#baum");
   ziel.innerHTML = "";
   const alle = { name: "Alle Sessions", path: "", children: wurzeln, sessions: [],
@@ -84,14 +95,16 @@ function sessionsZeigen(n) {
   const liste = sessionsDarunter(n).sort((x, y) => y.mtime - x.mtime);
   if (!liste.length) {
     ziel.appendChild(el("div", "leer", n.path ? "keine Sessions in diesem Ordner"
-      : "Keine Claude-Code-Sessions gefunden (gesucht in %USERPROFILE%\\.claude\\projects)"));
+      : (SRC === "opencode" ? "Keine opencode-Sessions gefunden (gesucht in der opencode.db)"
+        : "Keine Claude-Code-Sessions gefunden (gesucht in %USERPROFILE%\\.claude\\projects)")));
     return;
   }
   liste.forEach((s) => {
     const d = el("div", "sitem");
     d.appendChild(el("div", "t", s.title));
     const dt = new Date(s.mtime * 1000).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
-    d.appendChild(el("div", "m", dt + "   " + (s.size / 1024).toFixed(0) + " KB"));
+    const groesse = s.source === "opencode" ? s.size + " Nachrichten" : (s.size / 1024).toFixed(0) + " KB";
+    d.appendChild(el("div", "m", dt + "   " + groesse));
     if (s.cwd !== n.path) d.appendChild(el("div", "m pfad", s.cwd));
     d.title = s.cwd;
     d.onclick = () => {
@@ -107,7 +120,7 @@ function sessionsZeigen(n) {
 async function sessionOeffnen(s) {
   $("#liste").innerHTML = "<div class='leer gross'>laedt ...</div>";
   let r;
-  try { r = await api("/api/open", { file: s.file }); }
+  try { r = await api("/api/open", { file: s.file, source: s.source || "claude", id: s.id }); }
   catch (e) { $("#liste").innerHTML = "<div class='leer gross'>Fehler: " + e.message + "</div>"; return; }
   ZUSTAND.titel = s.title;
   const h = $("#hinweis");
@@ -115,7 +128,9 @@ async function sessionOeffnen(s) {
   h.className = "hinweis";
   h.textContent = "Sicherung angelegt (" + r.backup.split(/[\\/]/).pop() + "). "
     + r.purge.anzahl + " Denkprozesse entfernt, ~" + ntok(r.purge.tokens) + " Tokens gespart. "
-    + "Die Datei selbst ist noch unveraendert – erst „speichern“ schreibt.";
+    + (SRC === "opencode"
+       ? "Die DB ist noch unveraendert – erst „speichern“ schreibt. opencode dafuer schliessen."
+       : "Die Datei selbst ist noch unveraendert – erst „speichern“ schreibt.");
   $("#run").disabled = false;
   await aktualisieren();
 }
@@ -626,7 +641,10 @@ async function agentPollen() {
 
 /* --------------------------------------------------------------- speichern */
 $("#save").onclick = async () => {
-  if (!confirm("Aenderungen jetzt in die Session-Datei schreiben?\n\nEine Sicherung liegt bereits daneben.")) return;
+  const frage = SRC === "opencode"
+    ? "Aenderungen jetzt in die opencode-DB schreiben?\n\nopencode muss dafuer geschlossen sein. Eine Sicherung liegt bereits daneben."
+    : "Aenderungen jetzt in die Session-Datei schreiben?\n\nEine Sicherung liegt bereits daneben.";
+  if (!confirm(frage)) return;
   try {
     const r = await api("/api/save", {});
     meldung("Gespeichert: " + r.records + " Records geschrieben. Sicherung: " + r.backup.split(/[\\/]/).pop());

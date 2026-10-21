@@ -39,6 +39,7 @@ class Item:
     original: str = None
     has_signature: bool = False
     enc_bytes: int = 0       # Groesse des verschluesselten thinking-Blobs
+    sub: str = None          # opencode: welcher Teil eines Blocks (input/output/reasoning/text)
     marker: str = None       # classifier_stop | refusal_fallback | <custom>
     flagged: bool = False    # diese Nachricht hat einen Klassifikator ausgeloest
     flag_category: str = None
@@ -63,6 +64,7 @@ def _result_text(content):
 class Session:
     def __init__(self, path):
         self.path = Path(path)
+        self.source = "claude"
         self.records = []
         self.items = []
         self.bak = None

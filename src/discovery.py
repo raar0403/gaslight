@@ -119,11 +119,17 @@ def sessions(force=False):
     return out
 
 
-def tree():
+def tree(source="claude"):
     """Baum von Laufwerk/Wurzel bis Projektordner, Sessions an den Blaettern.
 
     Knoten: {"name":..., "path":..., "children":[...], "sessions":[...]}
+    source: "claude" (jsonl-Dateien) oder "opencode" (SQLite-DB).
     """
+    if source == "opencode":
+        import opencode
+        src = opencode.sessions()
+    else:
+        src = sessions()
     roots = {}
 
     def child(node, name, path):
@@ -134,7 +140,7 @@ def tree():
         node["children"].append(c)
         return c
 
-    for s in sessions():
+    for s in src:
         pp = pathlib.PurePath(s["cwd"])
         parts = list(pp.parts)
         if not parts:

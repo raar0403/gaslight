@@ -44,7 +44,9 @@ def need():
 
 # ------------------------------------------------------------------ modelle
 class OpenReq(BaseModel):
-    file: str
+    file: str = ""
+    source: str = "claude"
+    id: str = None
 
 
 class IdxReq(BaseModel):
@@ -69,8 +71,8 @@ class DecideReq(BaseModel):
 
 # ------------------------------------------------------------------ routen
 @app.get("/api/tree")
-def r_tree():
-    return discovery.tree()
+def r_tree(source: str = "claude"):
+    return discovery.tree(source)
 
 
 @app.get("/api/models")
@@ -80,20 +82,32 @@ def r_models():
 
 @app.post("/api/open")
 def r_open(q: OpenReq):
-    p = Path(q.file)
-    if not p.exists():
-        raise HTTPException(404, "Datei nicht gefunden")
-    S.sess = Session(p)
+    if q.source == "opencode":
+        import opencode
+        db = opencode.db_path()
+        if not db.exists():
+            raise HTTPException(404, "opencode-DB nicht gefunden: %s" % db)
+        if not q.id:
+            raise HTTPException(400, "keine Session-id angegeben")
+        model = next((s["model"] for s in opencode.sessions() if s["id"] == q.id), None)
+        S.sess = opencode.OpencodeSession(db, q.id, model)
+        pfad = "%s :: %s" % (db, q.id)
+    else:
+        p = Path(q.file)
+        if not p.exists():
+            raise HTTPException(404, "Datei nicht gefunden")
+        S.sess = Session(p)
+        pfad = str(p)
     S.store = Store()
     S.agent_lauf = {"aktiv": False, "events": [], "ergebnis": None}
     # Vorarbeit: Sicherung anlegen, Denkprozesse sofort raus -- nur im
-    # Arbeitsmodell. Die Datei wird erst beim Speichern angefasst, damit eine
+    # Arbeitsmodell. Die Daten werden erst beim Speichern angefasst, damit eine
     # gerade laufende Session nicht zerschossen wird.
     bak = S.sess.backup()
     S.purge = ops.purge_thinking(S.sess)
     prompts.apply_custom_triggers(S.sess)
     return {"stats": S.sess.stats(), "purge": S.purge, "backup": bak,
-            "path": str(p), "titel": p.stem}
+            "path": pfad, "titel": q.id or Path(q.file).stem}
 
 
 @app.get("/api/items")
